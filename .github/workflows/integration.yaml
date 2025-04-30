@@ -1,0 +1,62 @@
+name: Determine changed services
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  
+jobs:
+  # JOB to run change detection
+  detect-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      changed: ${{ steps.filter.outputs.changes }}
+    steps:
+      - name: Detect changed services
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            auth-api:
+              - 'auth-api/**'
+            todos-api:
+              - 'todos-api/**'
+            users-api:
+              - 'users-api/**'
+            log-message-processor:
+              - 'log-message-processor/**'
+
+  build:
+    needs: detect_changes
+    runs-on: ubuntu-latest
+    # skip entirely if nothing changed
+    if: ${{ needs.detect_changes.outputs.changed != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect_changes.outputs.changed) }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Read VERSION
+        id: get_version
+        run: |
+          echo "version=$(< ${{ matrix.service }}/VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: |
+          echo "Building Docker image for ${{ matrix.service }} with version ${{ steps.get_version.outputs.version }}"
+          
+          # docker build \
+          #   -t my-ecr-repo/${{ matrix.service }}:${{ steps.get_version.outputs.version }} \
+          #   ./${{ matrix.service }}
+
+      # ── you can add your AWS/ECR login here ──
+
+      #- name: Push Docker image to ECR
+      #  run: |
+      #    docker push my-ecr-repo/${{ matrix.service }}:${{ steps.get_version.outputs.version }}
