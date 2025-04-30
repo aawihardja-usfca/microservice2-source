@@ -1,17 +1,17 @@
-name: Determine changed services
+name: Build only changed services
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
-  
+
 jobs:
-  # JOB to run change detection
-  detect-changes:
+  detect_changes:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
     outputs:
+      # 'changes' is a JSON array of all filter names that matched
       changed: ${{ steps.filter.outputs.changes }}
     steps:
       - name: Detect changed services
