@@ -14,6 +14,12 @@ jobs:
       # 'changes' is a JSON array of all filter names that matched
       changed: ${{ steps.filter.outputs.changes }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # full history is required for `paths-filter` to compare against the base
+          fetch-depth: 0
+
       - name: Detect changed services
         id: filter
         uses: dorny/paths-filter@v3
