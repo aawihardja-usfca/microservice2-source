@@ -86,8 +86,14 @@ jobs:
           # expose the final image URI as a step output if you need it downstream
           echo "image_uri=${IMAGE_URI}" >> $GITHUB_OUTPUT
 
-      # ── you can add your AWS/ECR login here ──
-
-      #- name: Push Docker image to ECR
-      #  run: |
-      #    docker push my-ecr-repo/${{ matrix.service }}:${{ steps.get_version.outputs.version }}
+      - name: Notify Infra Repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy
+          client-payload: |
+            {
+              "service": "${{ matrix.service }}",
+              "image_uri": "${{ steps.build_and_push.outputs.image_uri }}"
+            }
