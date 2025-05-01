@@ -1,7 +1,8 @@
 
 <template>
   <nav class="navbar navbar-toggleable-md navbar-inverse bg-inverse fixed-top">
-    <a class="navbar-brand" href="#">70d0 0v3r3n61n33r1n6</a>
+    <!-- <a class="navbar-brand" href="#">70d0 0v3r3n61n33r1n6</a> -->
+    <a class="navbar-brand" href="#">Todo App</a>
     <ul class="navbar-nav mr-auto">
       <li class="nav-item" v-show="isAdmin()">
         <a class="btn btn-success mr-sm-2" href="#/admin">Admin</a>
@@ -13,7 +14,7 @@
         <a class="btn btn-success mr-sm-2" href="#/login">Login</a>
       </li>
       <li class="nav-item" v-show="isLoggedIn()">
-        <button class="btn btn-danger mr-sm-2" href="#" @click="logout()" >Logout</button>
+        <button class="btn btn-danger mr-sm-2" href="#" @click="logout()">Logout</button>
       </li>
     </ul>
   </nav>
