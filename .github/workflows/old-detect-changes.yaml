@@ -1,0 +1,99 @@
+name: Build only changed services
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: '035863456454'
+
+jobs:
+  detect_changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      # 'changes' is a JSON array of all filter names that matched
+      changed: ${{ steps.filter.outputs.changes }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # full history is required for `paths-filter` to compare against the base
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            auth-api:
+              - 'auth-api/**'
+            todos-api:
+              - 'todos-api/**'
+            users-api:
+              - 'users-api/**'
+            log-message-processor:
+              - 'log-message-processor/**'
+
+  build:
+    needs: detect_changes
+    runs-on: ubuntu-latest
+    # skip entirely if nothing changed
+    if: ${{ needs.detect_changes.outputs.changed != '[]' }}
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect_changes.outputs.changed) }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Login to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Read VERSION
+        id: get_version
+        run: |
+          echo "version=$(< ${{ matrix.service }}/VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Docker image
+        id: build_and_push
+        run: |
+          # combine VERSION file and today's date into the tag
+          VERSION_TAG="${{ steps.get_version.outputs.version }}-$(date +'%F')"
+          ECR_REGISTRY="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+          IMAGE_URI="${ECR_REGISTRY}/${{ matrix.service }}:${VERSION_TAG}"
+
+          echo "→ Building image: ${IMAGE_URI}"
+          docker build --pull -t "${IMAGE_URI}" "./${{ matrix.service }}"
+
+          echo "→ Pushing image"
+          docker push "${IMAGE_URI}"
+
+          # expose the final image URI as a step output if you need it downstream
+          echo "image_uri=${IMAGE_URI}" >> $GITHUB_OUTPUT
+
+      - name: Notify Infra Repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy
+          client-payload: |
+            {
+              "service": "${{ matrix.service }}",
+              "image_uri": "${{ steps.build_and_push.outputs.image_uri }}"
+            }

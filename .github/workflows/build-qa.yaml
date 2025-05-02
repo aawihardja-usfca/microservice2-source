@@ -1,0 +1,62 @@
+name: Build QA Image
+on:
+  push:
+    tags:
+      - 'qa-*'  # e.g. qa-auth-api-1.0, qa-todos-api-2.3
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: '035863456454'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Parse Git tag
+        id: parse
+        run: |
+          # FROM: refs/tags/qa-auth-api-1.0
+          TAG=${GITHUB_REF#refs/tags/}
+          # STRIP "qa-"
+          AFTER=${TAG#qa-}             # "auth-api-1.0"
+          SERVICE=${AFTER%-*}          # "auth-api"
+          VERSION=${AFTER#${SERVICE}-} # "1.0"
+          echo "service=$SERVICE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push QA Docker image
+        id: build_push
+        run: |
+          REPO=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          IMAGE=$REPO/${{ steps.parse.outputs.service }}:qa-${{ steps.parse.outputs.service }}-${{ steps.parse.outputs.version }}
+          echo "Building $IMAGE"
+          docker build -t $IMAGE ./${{ steps.parse.outputs.service }}
+          docker push $IMAGE
+          echo "image_uri=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Notify Infra Repo (QA)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy-qa
+          client-payload: |
+            {
+              "service":    "${{ steps.parse.outputs.service }}",
+              "image_uri":  "${{ steps.build_push.outputs.image_uri }}",
+              "environment":"qa"
+            }
