@@ -1,0 +1,296 @@
+--- redis-queue/deployment.yaml ---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: microservice-app-example
+  name: redis-queue
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: microservice-app-example
+        service: redis-queue
+    spec:
+      containers:
+      - env:
+        image: redis
+        name: redis-queue
+        ports:
+        - containerPort: 6379
+      restartPolicy: Always
+
+
+--- redis-queue/service.yaml ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: microservice-app-example
+  name: redis-queue
+spec:
+  ports:
+  - port: 6379
+  selector:
+    service: redis-queue
+
+--- todos-api/deployment.yaml ---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: microservice-app-example
+  name: todos-api
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: microservice-app-example
+        service: todos-api
+    spec:
+      containers:
+      - env:
+        - name: JWT_SECRET
+          value: myfancysecret
+        - name: TODO_API_PORT
+          value: "8082"
+        - name: REDIS_HOST
+          value: redis-queue
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_CHANNEL
+          value: log_channel
+        - name: ZIPKIN_URL
+          value: http://zipkin:9411/api/v2/spans
+          
+        image: todos-api
+        name: todos-api
+        ports:
+        - containerPort: 8082
+        imagePullPolicy: Never
+      restartPolicy: Always
+
+
+--- todos-api/service.yaml ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: microservice-app-example
+  name: todos-api
+spec:
+  ports:
+  - port: 8082
+  selector:
+    service: todos-api
+
+--- auth-api/deployment.yaml ---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: microservice-app-example
+  name: auth-api
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: microservice-app-example
+        service: auth-api
+    spec:
+      containers:
+      - env:
+        - name: AUTH_API_PORT
+          value: "8081"
+        - name: JWT_SECRET
+          value: myfancysecret
+        - name: USERS_API_ADDRESS
+          value: http://users-api:8083
+        - name: ZIPKIN_URL
+          value: http://zipkin:9411/api/v2/spans          
+        image: auth-api
+        name: auth-api
+        ports:
+        - containerPort: 8081
+        imagePullPolicy: Never
+      restartPolicy: Always
+
+
+--- auth-api/service.yaml ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: microservice-app-example
+  name: auth-api
+spec:
+  ports:
+  - port: 8081
+  selector:
+    service: auth-api
+
+--- frontend/deployment.yaml ---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: microservice-app-example
+  name: frontend
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: microservice-app-example
+        service: frontend
+    spec:
+      containers:
+      - env:
+        - name: AUTH_API_ADDRESS
+          value: http://auth-api:8081
+        - name: PORT
+          value: "8080"
+        - name: TODOS_API_ADDRESS
+          value: http://todos-api:8082
+        - name: ZIPKIN_URL
+          value: http://zipkin:9411/api/v2/spans
+        image: frontend
+        name: frontend
+        ports:
+        - containerPort: 8080
+        imagePullPolicy: Never
+      restartPolicy: Always
+
+
+--- frontend/service.yaml ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: microservice-app-example
+  name: frontend
+spec:
+  ports:
+  - port: 8080
+  selector:
+    service: frontend
+  type: LoadBalancer
+
+--- log-message-processor/deployment.yaml ---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: microservice-app-example
+  name: log-message-processor
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: microservice-app-example
+        service: log-message-processor
+    spec:
+      containers:
+      - env:
+        - name: REDIS_HOST
+          value: redis-queue
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_CHANNEL
+          value: log_channel
+        - name: ZIPKIN_URL
+          value: http://zipkin:9411/api/v1/spans
+          
+        image: log-message-processor
+        name: log-message-processor
+        imagePullPolicy: Never
+      restartPolicy: Always
+
+
+--- users-api/deployment.yaml ---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: microservice-app-example
+  name: users-api
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: microservice-app-example
+        service: users-api
+    spec:
+      containers:
+      - env:
+        - name: JWT_SECRET
+          value: myfancysecret
+        - name: SERVER_PORT
+          value: "8083"
+        - name: SPRING_ZIPKIN_BASE_URL
+          value: http://zipkin:9411
+        image: users-api
+        name: users-api
+        ports:
+        - containerPort: 8083
+        imagePullPolicy: Never
+      restartPolicy: Always
+
+
+--- users-api/service.yaml ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: microservice-app-example
+  name: users-api
+spec:
+  ports:
+  - port: 8083
+  selector:
+    service: users-api
+
+--- zipkin/deployment.yaml ---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: microservice-app-example
+  name: zipkin
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: microservice-app-example
+        service: zipkin
+    spec:
+      containers:
+      - env:
+        image: openzipkin/zipkin
+        name: zipkin
+        ports:
+        - containerPort: 9411
+        - containerPort: 9410
+      restartPolicy: Always
+
+
+--- zipkin/service.yaml ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: microservice-app-example
+  name: zipkin
+spec:
+  ports:
+  - port: 9411
+  selector:
+    service: zipkin
+  type: LoadBalancer
+
