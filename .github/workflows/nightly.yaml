@@ -1,3 +1,4 @@
+# Nightly builds all servces and pushes them to ECR with tag qa-<service>-nightly-<date>
 name: Nightly build & push
 
 on:

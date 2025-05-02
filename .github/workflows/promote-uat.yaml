@@ -1,3 +1,8 @@
+# This workflow is triggered by a push to a tag that starts with "rc-".
+# Only builds the microservice that is tagged.
+# It pulls the corresponding QA image, retags it to "rc-<svc>-<version>", and pushes it to ECR.
+# IMPORTANT: the rc tag must have the same version as a QA tag existed in ECR.
+# Then it dispatches a repository dispatch event to the infra-repo to deploy image to UAT.
 name: Promote to UAT (RC)
 on:
   push:
@@ -45,16 +50,15 @@ jobs:
           docker push $REPO/${{ steps.parse.outputs.service }}:$RC_TAG
           echo "image_uri=$REPO/${{ steps.parse.outputs.service }}:$RC_TAG" >> $GITHUB_OUTPUT
 
-      # Don't dispatch for now
-      # - name: Dispatch to Infra Repo (UAT)
-      #   uses: peter-evans/repository-dispatch@v3
-      #   with:
-      #     token: ${{ secrets.INFRA_REPO_TOKEN }}
-      #     repository: aawihardja-usfca/microservice2-infra
-      #     event-type: deploy
-      #     client-payload: |
-      #       {
-      #         "service":    "${{ steps.parse.outputs.service }}",
-      #         "image_uri":  "${{ steps.rc.outputs.image_uri }}",
-      #         "environment":"uat"
-      #       }
+      - name: Dispatch to Infra Repo (UAT)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy-uat
+          client-payload: |
+            {
+              "service":    "${{ steps.parse.outputs.service }}",
+              "image_uri":  "${{ steps.rc.outputs.image_uri }}",
+              "environment":"uat"
+            }
