@@ -20,7 +20,7 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: Load manifest and dispatch
+      - name: Load manifest
         id: get_QA_version
         run: |
           MANIFEST="release-manifests/${{ steps.parse_rc.outputs.tag }}.yaml"
