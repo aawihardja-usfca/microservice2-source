@@ -21,7 +21,7 @@ jobs:
         id: parse
         run: |
           TAG=${GITHUB_REF#refs/tags/}   # "ga-auth-api-1.0"
-          AFTER=${TAG#rc-}               # "auth-api-1.0"
+          AFTER=${TAG#ga-}               # "auth-api-1.0"
           SERVICE=${AFTER%-*}            # "auth-api"
           VERSION=${AFTER#${SERVICE}-}   # "1.0"
           echo "service=$SERVICE" >> $GITHUB_OUTPUT
