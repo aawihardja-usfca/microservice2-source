@@ -1,0 +1,64 @@
+# This workflow is triggered by a push to a tag that starts with "rc-".
+# Only builds the microservice that is tagged.
+# It pulls the corresponding QA image, retags it to "ga-<svc>-<version>", and pushes it to ECR.
+# IMPORTANT: the ga tag must have the same version as a QA tag existed in ECR.
+# Then it dispatches a repository dispatch event to the infra-repo to deploy image to Prod.
+name: Promote to Prod (GA)
+on:
+  push:
+    tags:
+      - 'ga-*'
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: '035863456454'
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse Git tag
+        id: parse
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}   # "ga-auth-api-1.0"
+          AFTER=${TAG#rc-}               # "auth-api-1.0"
+          SERVICE=${AFTER%-*}            # "auth-api"
+          VERSION=${AFTER#${SERVICE}-}   # "1.0"
+          echo "service=$SERVICE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS & Login ECR
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+      
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Pull QA image, retag to GA, push
+        id: ga
+        run: |
+          REPO=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          QA_TAG=qa-${{ steps.parse.outputs.service }}-${{ steps.parse.outputs.version }}
+          GA_TAG=ga-${{ steps.parse.outputs.service }}-${{ steps.parse.outputs.version }}
+
+          docker pull $REPO/${{ steps.parse.outputs.service }}:$QA_TAG
+          docker tag  $REPO/${{ steps.parse.outputs.service }}:$QA_TAG \
+                      $REPO/${{ steps.parse.outputs.service }}:$GA_TAG
+          docker push $REPO/${{ steps.parse.outputs.service }}:$GA_TAG
+          echo "image_uri=$REPO/${{ steps.parse.outputs.service }}:$GA_TAG" >> $GITHUB_OUTPUT
+
+      - name: Dispatch to Infra Repo (UAT)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy-prod
+          client-payload: |
+            {
+              "service":    "${{ steps.parse.outputs.service }}",
+              "image_uri":  "${{ steps.ga.outputs.image_uri }}",
+              "environment":"prod"
+            }
