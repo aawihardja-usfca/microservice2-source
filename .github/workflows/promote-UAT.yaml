@@ -1,0 +1,53 @@
+on:
+  push:
+    tags:
+      - 'RC*'
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: '905418330989'
+
+jobs:
+  promote-to-uat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Parse RC manifest
+        id: parse_rc
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Load manifest and dispatch
+        id: get_QA_version
+        run: |
+          MANIFEST="release-manifests/${{ steps.parse_rc.outputs.tag }}.yaml"
+          echo "Using manifest: $MANIFEST"
+
+          # Convert YAML to JSON
+          SERVICES=$(yq -o=json .services "$MANIFEST")
+
+          for SERVICE in $(echo "$SERVICES" | jq -r 'keys[]'); do
+            IMAGE_TAG=$(echo "$SERVICES" | jq -r --arg s "$SERVICE" '.[$s]')
+            FULL_IMAGE="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$SERVICE:$IMAGE_TAG"
+            
+            echo "$SERVICE=$FULL_IMAGE" >> $GITHUB_OUTPUT
+          done
+
+      - name: Notify Infra Repo (QA)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy-UAT
+          client-payload: |
+            {
+              "auth-api": "${{ steps.get_QA_version.outputs.auth-api }}",
+              "frontend": "${{ steps.get_QA_version.outputs.frontend }}",
+              "log-message-processor": "${{ steps.get_QA_version.outputs.log-message-processor }}",
+              "todos-api": "${{ steps.get_QA_version.outputs.todos-api }}",
+              "users-api": "${{ steps.get_QA_version.outputs.users-api }}",
+              "environment": "UAT"
+            }
