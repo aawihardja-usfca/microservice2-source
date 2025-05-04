@@ -2,7 +2,7 @@ name: Build QA Image
 on:
   push:
     tags:
-      - 'QA-*'  # e.g. qa-auth-api-1.0, qa-todos-api-2.3
+      - 'QA-*'  # e.g. QA-auth-api-1.0, QA-todos-api-2.3
 
 env:
   AWS_REGION: us-east-1
