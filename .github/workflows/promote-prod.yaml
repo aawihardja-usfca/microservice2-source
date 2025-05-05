@@ -38,14 +38,12 @@ jobs:
 
           # Convert services YAML to JSON and construct full image URIs
           SERVICES_JSON=$(yq -o=json .services "$RC_MANIFEST")
-          FINAL_PAYLOAD=$(echo "$SERVICES_JSON" | jq --arg acc "${{ env.AWS_ACCOUNT_ID }}" --arg reg "${{ env.AWS_REGION }}" '
-            with_entries(
-              .value = "\($acc).dkr.ecr.\($reg).amazonaws.com/\(.key):\(.value)"
-            )
-          ')
 
-          echo "services_json=$FINAL_PAYLOAD" >> $GITHUB_OUTPUT
-          echo "$FINAL_PAYLOAD" > payload.json
+          for SERVICE in $(echo "$SERVICES_JSON" | jq -r 'keys[]'); do
+            TAG=$(echo "$SERVICES" | jq -r --arg s "$SERVICE" '.[$s]')
+            IMAGE_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$SERVICE:$TAG"
+            echo "$SERVICE=$IMAGE_URI" >> $GITHUB_OUTPUT
+          done
 
       - name: Notify Infra Repo (GA deploy)
         uses: peter-evans/repository-dispatch@v3
@@ -54,3 +52,18 @@ jobs:
           repository: aawihardja-usfca/microservice2-infra
           event-type: deploy-Production
           client-payload: ${{ steps.build_payload.outputs.services_json }}
+
+      - name: Notify Infra Repo (GA deploy)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy-Production
+          client-payload: |
+            {
+              "frontend": "${{ steps.parse_rc_manifest.outputs.frontend }}",
+              "auth-api": "${{ steps.parse_rc_manifest.outputs.auth-api }}",
+              "users-api": "${{ steps.parse_rc_manifest.outputs.users-api }}",
+              "todos-api": "${{ steps.parse_rc_manifest.outputs.todos-api }}",
+              "log-message-processor": "${{ steps.parse_rc_manifest.outputs.log-message-processor }}"
+            }
