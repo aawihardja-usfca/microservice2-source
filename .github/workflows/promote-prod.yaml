@@ -40,7 +40,7 @@ jobs:
           SERVICES_JSON=$(yq -o=json .services "$RC_MANIFEST")
 
           for SERVICE in $(echo "$SERVICES_JSON" | jq -r 'keys[]'); do
-            TAG=$(echo "$SERVICES" | jq -r --arg s "$SERVICE" '.[$s]')
+            TAG=$(echo "$SERVICES_JSON" | jq -r --arg s "$SERVICE" '.[$s]')
             IMAGE_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$SERVICE:$TAG"
             echo "$SERVICE=$IMAGE_URI" >> $GITHUB_OUTPUT
           done
