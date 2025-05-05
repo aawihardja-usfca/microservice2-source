@@ -32,13 +32,16 @@ jobs:
 
           echo "services_json=${SERVICES_JSON}" >> $GITHUB_OUTPUT
 
-      - name: Notify Infra Repo (QA)
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.INFRA_REPO_TOKEN }}
-          repository: aawihardja-usfca/microservice2-infra
-          event-type: deploy-UAT
-          client-payload: |
-            echo "Deploying to UAT with the following services:"
-            echo ${{ steps.get_QA_version.outputs.services_json }}
-            ${{  steps.get_QA_version.outputs.services_json }}
+      - name: Debug JSON
+        run: |
+          echo "Debugging JSON"
+          echo "${{ steps.get_QA_version.outputs.services_json }}"
+
+      # - name: Notify Infra Repo (QA)
+      #   uses: peter-evans/repository-dispatch@v3
+      #   with:
+      #     token: ${{ secrets.INFRA_REPO_TOKEN }}
+      #     repository: aawihardja-usfca/microservice2-infra
+      #     event-type: deploy-UAT
+      #     client-payload: |
+      #       ${{  steps.get_QA_version.outputs.services_json }}
