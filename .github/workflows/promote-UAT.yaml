@@ -39,4 +39,6 @@ jobs:
           repository: aawihardja-usfca/microservice2-infra
           event-type: deploy-UAT
           client-payload: |
+            echo "Deploying to UAT with the following services:"
+            echo ${{ steps.get_QA_version.outputs.services_json }}
             ${{  steps.get_QA_version.outputs.services_json }}
