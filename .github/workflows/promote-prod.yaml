@@ -2,7 +2,7 @@ name: Promote to Production (GA)
 on:
   push:
     tags:
-      - 'GA-*'
+      - 'GA-*'  # e.g. GA-1.0, GA-1.2
 
 env:
   AWS_REGION: us-east-1
