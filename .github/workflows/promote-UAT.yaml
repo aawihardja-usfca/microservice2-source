@@ -30,24 +30,23 @@ jobs:
           # Convert YAML to JSON
           SERVICES_JSON=$(yq -o=json .services "$RC_MANIFEST")
 
-          FINAL_PAYLOAD=$(echo "$SERVICES_JSON" | jq --arg acc "${{ env.AWS_ACCOUNT_ID }}" --arg reg "${{ env.AWS_REGION }}" '
-            with_entries(
-              .value = "\($acc).dkr.ecr.\($reg).amazonaws.com/\(.key):\(.value)"
-            )
-          ')
+          for SERVICE in $(echo "$SERVICES" | jq -r 'keys[]'); do
+            TAG=$(echo "$SERVICES" | jq -r --arg s "$SERVICE" '.[$s]')
+            IMAGE_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$SERVICE:$TAG"
+            echo "$SERVICE=$IMAGE_URI" >> $GITHUB_OUTPUT
+          done
 
-          echo "services_json=${FINAL_PAYLOAD}" >> $GITHUB_OUTPUT
-
-      - name: Debug JSON
-        run: |
-          echo "Debugging JSON"
-          echo "${ steps.get_QA_version.outputs.services_json }"
-
-      # - name: Notify Infra Repo (QA)
-      #   uses: peter-evans/repository-dispatch@v3
-      #   with:
-      #     token: ${{ secrets.INFRA_REPO_TOKEN }}
-      #     repository: aawihardja-usfca/microservice2-infra
-      #     event-type: deploy-UAT
-      #     client-payload: |
-      #       ${{  steps.get_QA_version.outputs.services_json }}
+      - name: Notify Infra Repo (QA)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy-UAT
+          client-payload: |
+            {
+              "frontend": "${{ steps.parse_rc_manifest.outputs.frontend }}",
+              "auth-api": "${{ steps.parse_rc_manifest.outputs.auth-api }}",
+              "users-api": "${{ steps.parse_rc_manifest.outputs.users-api }}",
+              "todos-api": "${{ steps.parse_rc_manifest.outputs.todos-api }}",
+              "log-message-processor": "${{ steps.parse_rc_manifest.outputs.log-message-processor }}"
+            }
