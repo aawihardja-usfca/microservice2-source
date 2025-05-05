@@ -28,7 +28,7 @@ jobs:
           echo "Using manifest file: $RC_MANIFEST"
 
           # Convert YAML to JSON
-          SERVICES_JSON=$(yq -o=json .services "$RC_MANIFEST")
+          SERVICES=$(yq -o=json .services "$RC_MANIFEST")
 
           for SERVICE in $(echo "$SERVICES" | jq -r 'keys[]'); do
             TAG=$(echo "$SERVICES" | jq -r --arg s "$SERVICE" '.[$s]')
