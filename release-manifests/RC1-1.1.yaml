@@ -1,0 +1,7 @@
+name: RC1-1.0
+services:
+  frontend: QA-frontend-1.1
+  users-api: QA-users-api-1.0
+  auth-api: QA-auth-api-1.0
+  todos-api: QA-todos-api-1.0
+  log-message-processor: QA-log-message-processor-1.0
