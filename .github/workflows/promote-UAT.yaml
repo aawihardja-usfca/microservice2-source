@@ -28,20 +28,15 @@ jobs:
           echo "Using manifest file: $MANIFEST"
 
           # Convert YAML to JSON
-          SERVICES=$(yq -o=json .services "$MANIFEST")
+          SERVICES_JSON=$(yq -o=json .services "$MANIFEST")
 
           echo "services_json=${SERVICES_JSON}" >> $GITHUB_OUTPUT
 
-      - name: Debug JSON
-        run: |
-          echo "Debugging JSON"
-          echo "${{ steps.get_QA_version.outputs.services_json }}"
-
-      # - name: Notify Infra Repo (QA)
-      #   uses: peter-evans/repository-dispatch@v3
-      #   with:
-      #     token: ${{ secrets.INFRA_REPO_TOKEN }}
-      #     repository: aawihardja-usfca/microservice2-infra
-      #     event-type: deploy-UAT
-      #     client-payload: |
-      #       ${{  steps.get_QA_version.outputs.services_json }}
+      - name: Notify Infra Repo (QA)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: deploy-UAT
+          client-payload: |
+            ${{  steps.get_QA_version.outputs.services_json }}
