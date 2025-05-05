@@ -37,7 +37,6 @@ jobs:
           ')
 
           echo "services_json=${FINAL_PAYLOAD}" >> $GITHUB_OUTPUT
-          echo "$FINAL_PAYLOAD" > payload.json
 
       - name: Debug JSON
         run: |
