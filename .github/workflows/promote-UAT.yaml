@@ -24,17 +24,12 @@ jobs:
         id: get_QA_version
         run: |
           MANIFEST="release-manifests/${{ steps.parse_rc.outputs.tag }}.yaml"
-          echo "Using manifest: $MANIFEST"
+          echo "Using manifest file: $MANIFEST"
 
           # Convert YAML to JSON
           SERVICES=$(yq -o=json .services "$MANIFEST")
 
-          for SERVICE in $(echo "$SERVICES" | jq -r 'keys[]'); do
-            IMAGE_TAG=$(echo "$SERVICES" | jq -r --arg s "$SERVICE" '.[$s]')
-            FULL_IMAGE="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/$SERVICE:$IMAGE_TAG"
-            
-            echo "$SERVICE=$FULL_IMAGE" >> $GITHUB_OUTPUT
-          done
+          echo "services_json=${SERVICES_JSON}" >> $GITHUB_OUTPUT
 
       - name: Notify Infra Repo (QA)
         uses: peter-evans/repository-dispatch@v3
@@ -43,11 +38,4 @@ jobs:
           repository: aawihardja-usfca/microservice2-infra
           event-type: deploy-UAT
           client-payload: |
-            {
-              "auth-api": "${{ steps.get_QA_version.outputs.auth-api }}",
-              "frontend": "${{ steps.get_QA_version.outputs.frontend }}",
-              "log-message-processor": "${{ steps.get_QA_version.outputs.log-message-processor }}",
-              "todos-api": "${{ steps.get_QA_version.outputs.todos-api }}",
-              "users-api": "${{ steps.get_QA_version.outputs.users-api }}",
-              "environment": "UAT"
-            }
+            ${{  steps.get_QA_version.outputs.services_json }}
