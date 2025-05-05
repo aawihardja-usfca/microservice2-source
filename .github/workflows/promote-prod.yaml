@@ -31,7 +31,7 @@ jobs:
           echo "base=$BASE_RC" >> $GITHUB_OUTPUT
 
       - name: Read RC manifest to get QA image tags
-        id: build_payload
+        id: parse_rc_manifest
         run: |
           RC_MANIFEST="release-manifests/${{ steps.read_ga_manifest.outputs.base }}.yaml"
           echo "Reading RC manifest: $RC_MANIFEST"
