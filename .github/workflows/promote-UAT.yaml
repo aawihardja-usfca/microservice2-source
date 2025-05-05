@@ -22,7 +22,7 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Load manifest
-        id: get_QA_version
+        id: parse_rc_manifest
         run: |
           RC_MANIFEST="release-manifests/${{ steps.parse_rc.outputs.tag }}.yaml"
           echo "Using manifest file: $RC_MANIFEST"
