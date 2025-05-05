@@ -24,19 +24,31 @@ jobs:
       - name: Load manifest
         id: get_QA_version
         run: |
-          MANIFEST="release-manifests/${{ steps.parse_rc.outputs.tag }}.yaml"
-          echo "Using manifest file: $MANIFEST"
+          RC_MANIFEST="release-manifests/${{ steps.parse_rc.outputs.tag }}.yaml"
+          echo "Using manifest file: $RC_MANIFEST"
 
           # Convert YAML to JSON
-          SERVICES_JSON=$(yq -o=json .services "$MANIFEST")
+          SERVICES_JSON=$(yq -o=json .services "$RC_MANIFEST")
 
-          echo "services_json=${SERVICES_JSON}" >> $GITHUB_OUTPUT
+          FINAL_PAYLOAD=$(echo "$SERVICES_JSON" | jq --arg acc "${{ env.AWS_ACCOUNT_ID }}" --arg reg "${{ env.AWS_REGION }}" '
+            with_entries(
+              .value = "\($acc).dkr.ecr.\($reg).amazonaws.com/\(.key):\(.value)"
+            )
+          ')
 
-      - name: Notify Infra Repo (QA)
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.INFRA_REPO_TOKEN }}
-          repository: aawihardja-usfca/microservice2-infra
-          event-type: deploy-UAT
-          client-payload: |
-            ${{  steps.get_QA_version.outputs.services_json }}
+          echo "services_json=${FINAL_PAYLOAD}" >> $GITHUB_OUTPUT
+          echo "$FINAL_PAYLOAD" > payload.json
+
+      - name: Debug JSON
+        run: |
+          echo "Debugging JSON"
+          echo "${ steps.get_QA_version.outputs.services_json }"
+
+      # - name: Notify Infra Repo (QA)
+      #   uses: peter-evans/repository-dispatch@v3
+      #   with:
+      #     token: ${{ secrets.INFRA_REPO_TOKEN }}
+      #     repository: aawihardja-usfca/microservice2-infra
+      #     event-type: deploy-UAT
+      #     client-payload: |
+      #       ${{  steps.get_QA_version.outputs.services_json }}
