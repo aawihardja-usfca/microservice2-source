@@ -52,5 +52,5 @@ jobs:
         with:
           token: ${{ secrets.INFRA_REPO_TOKEN }}
           repository: aawihardja-usfca/microservice2-infra
-          event-type: deploy-prod
+          event-type: deploy-Production
           client-payload: ${{ steps.build_payload.outputs.services_json }}
