@@ -51,14 +51,6 @@ jobs:
           token: ${{ secrets.INFRA_REPO_TOKEN }}
           repository: aawihardja-usfca/microservice2-infra
           event-type: deploy-Production
-          client-payload: ${{ steps.build_payload.outputs.services_json }}
-
-      - name: Notify Infra Repo (GA deploy)
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.INFRA_REPO_TOKEN }}
-          repository: aawihardja-usfca/microservice2-infra
-          event-type: deploy-Production
           client-payload: |
             {
               "frontend": "${{ steps.parse_rc_manifest.outputs.frontend }}",
