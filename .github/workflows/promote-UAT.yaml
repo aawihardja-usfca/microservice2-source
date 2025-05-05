@@ -1,3 +1,4 @@
+name: Promote to UAT (RC)
 on:
   push:
     tags:
