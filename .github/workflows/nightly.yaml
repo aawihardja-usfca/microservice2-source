@@ -47,15 +47,15 @@ jobs:
           echo "image_uri=$IMAGE" >> $GITHUB_OUTPUT
 
       # No need to notify infra-repo, just build & push
-      # - name: Dispatch to infra (QA)
-      #   uses: peter-evans/repository-dispatch@v3
-      #   with:
-      #     token: ${{ secrets.INFRA_REPO_TOKEN }}
-      #     repository: aawihardja-usfca/microservice2-infra
-      #     event-type: nightly-build
-      #     client-payload: |
-      #       {
-      #         "service":    "${{ matrix.service }}",
-      #         "image_uri":  "${{ steps.nightly_build.outputs.image_uri }}",
-      #         "environment":"qa"
-      #       }
+      - name: Dispatch to infra (QA)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          repository: aawihardja-usfca/microservice2-infra
+          event-type: nightly-build
+          client-payload: |
+            {
+              "service":    "${{ matrix.service }}",
+              "image_uri":  "${{ steps.nightly_build.outputs.image_uri }}",
+              "environment":"qa"
+            }
